@@ -116,12 +116,23 @@ int main(void) {
                 fprintf(stderr, "+ completed 'exit' [1]\n");
                 fflush(stderr);
                 continue;
-            } else {
-                fprintf(stderr, "Bye...\n");
-                fprintf(stderr, "+ completed 'exit' [0]\n");
-                fflush(stderr);
-                break;
             }
+
+            for (int i = 0; i < bg_count; i++) {
+                int status;
+                waitpid(bg_pids[i], &status, 0);
+                fprintf(stderr, "+ completed '%s' [%d]\n", bg_jobs[i], status);
+            }
+            fprintf(stderr, "Bye...\n");
+            fprintf(stderr, "+ completed 'exit' [0]\n");
+            fflush(stderr);
+            break;
+            // } else {
+            //     fprintf(stderr, "Bye...\n");
+            //     fprintf(stderr, "+ completed 'exit' [0]\n");
+            //     fflush(stderr);
+            //     break;
+            // }
         }
         int pos = 0;
         char *ptr;

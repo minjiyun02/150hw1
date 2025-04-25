@@ -214,7 +214,7 @@ int main(void) {
                 fflush(stderr);
                 continue;
             }
-            if (I_redirect != I_end - 2 || I_flag == 0) {
+            if (I_redirect != -1 && (cmd_num > 1 || I_redirect < 1)) {
                 fprintf(stderr, "Error: mislocated input redirection\n");
                 fflush(stderr);
                 continue;
@@ -259,11 +259,12 @@ int main(void) {
         // cd
         if (strcmp(argv[0], "cd") == 0) {
             if (chdir(argv[1]) < 0) {
-                printf("Error: cannot cd into directory");
+                fprintf(stderr, "Error: cannot cd into directory\n");
                 fprintf(stderr, "+ completed '%s' [1]\n", cmd);
                 fflush(stderr);
+                continue;
             } else {
-                fprintf(stderr, "+ completed '%s' [0]\n", cmd);
+                fprintf(stderr, "+ completed '%s' [0]\n", cmd_buf);
                 fflush(stderr);
             }
             continue;
@@ -305,7 +306,7 @@ int main(void) {
                     close(pipefds[i]);
                 }
                 if (execvp(cmd_begin[0], cmd_begin) < 0) {
-                    printf("Error: command not found\n");
+                    fprintf(stderr,"Error: command not found\n");
                     exit(1);
                 };
                 exit(0);

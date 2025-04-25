@@ -96,8 +96,8 @@ int main(void) {
         if (!eof)
             /* Make EOF equate to exit */
             strncpy(cmd, "exit\n", CMDLINE_MAX);
-
         strcpy(ogcmd, cmd);
+
         /* Print command line if stdin is not provided by terminal */
         if (!isatty(STDIN_FILENO)) {
             printf("%s", cmd);
@@ -116,23 +116,13 @@ int main(void) {
                 fprintf(stderr, "+ completed 'exit' [1]\n");
                 fflush(stderr);
                 continue;
+            } else {
+                fprintf(stderr, "Bye...\n");
+                fprintf(stderr, "+ completed 'exit' [0]\n");
+                fflush(stdout);
+                fflush(stderr);
+                break;
             }
-
-            for (int i = 0; i < bg_count; i++) {
-                int status;
-                waitpid(bg_pids[i], &status, 0);
-                fprintf(stderr, "+ completed '%s' [%d]\n", bg_jobs[i], status);
-            }
-            fprintf(stderr, "Bye...\n");
-            fprintf(stderr, "+ completed 'exit' [0]\n");
-            fflush(stderr);
-            break;
-            // } else {
-            //     fprintf(stderr, "Bye...\n");
-            //     fprintf(stderr, "+ completed 'exit' [0]\n");
-            //     fflush(stderr);
-            //     break;
-            // }
         }
         int pos = 0;
         char *ptr;
@@ -340,7 +330,8 @@ int main(void) {
             close(irdfd);
         }
         if (bg_pos != NULL) {
-            strcpy(bg_jobs[bg_count], ogcmd);   //temp
+            ogcmd[strcspn(ogcmd, "\n")] = '\0';     // tryinh removing newln
+            strcpy(bg_jobs[bg_count], ogcmd);
             bg_pids[bg_count] = pids[cmd_num - 1];
             bg_count++;
         } else {
@@ -351,7 +342,7 @@ int main(void) {
             if (running < cmd_num) {
                 continue;
             }
-            fprintf(stderr, "+ completed '%s' [", cmd);
+            fprintf(stderr, "+ completed '%s' [", ogcmd);
             for (int i = 0; i < cmd_num; i++) {
                 if (i != cmd_num - 1) {
                     fprintf(stderr, "%d][", statuss[i]);

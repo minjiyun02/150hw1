@@ -317,6 +317,8 @@ int main(void) {
             cmd_begin++;
             running++;
         }
+        char ogcmd[CMDLINE_MAX];        // og saving 1
+        strcpy(ogcmd, cmd);
         for (int i = 0; i < (cmd_num - 1) * 2; i++) {
             close(pipefds[i]);
         }
@@ -327,7 +329,7 @@ int main(void) {
             close(irdfd);
         }
         if (bg_pos != NULL) {
-            strcpy(bg_jobs[bg_count], cmd);
+            strcpy(bg_jobs[bg_count], ogcmd);   //temp
             bg_pids[bg_count] = pids[cmd_num - 1];
             bg_count++;
         } else {

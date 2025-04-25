@@ -65,6 +65,7 @@ int main(void) {
     char cmd[CMDLINE_MAX];
     char *eof;
     char cmd_buf[CMDLINE_MAX];
+    char ogcmd[CMDLINE_MAX];
     char bg_jobs[BG_MAX][CMDLINE_MAX];
     pid_t bg_pids[BG_MAX];
     int bg_count = 0;
@@ -96,6 +97,7 @@ int main(void) {
             /* Make EOF equate to exit */
             strncpy(cmd, "exit\n", CMDLINE_MAX);
 
+        strcpy(ogcmd, cmd);
         /* Print command line if stdin is not provided by terminal */
         if (!isatty(STDIN_FILENO)) {
             printf("%s", cmd);
@@ -317,8 +319,6 @@ int main(void) {
             cmd_begin++;
             running++;
         }
-        char ogcmd[CMDLINE_MAX];        // og saving 1
-        strcpy(ogcmd, cmd);
         for (int i = 0; i < (cmd_num - 1) * 2; i++) {
             close(pipefds[i]);
         }

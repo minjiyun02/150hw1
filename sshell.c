@@ -97,6 +97,7 @@ int main(void) {
             /* Make EOF equate to exit */
             strncpy(cmd, "exit\n", CMDLINE_MAX);
 
+        strcpy(ogcmd, cmd);
         /* Print command line if stdin is not provided by terminal */
         if (!isatty(STDIN_FILENO)) {
             printf("%s", cmd);
@@ -115,13 +116,23 @@ int main(void) {
                 fprintf(stderr, "+ completed 'exit' [1]\n");
                 fflush(stderr);
                 continue;
-            } else {
-                fprintf(stderr, "Bye...\n");
-                fprintf(stderr, "+ completed 'exit' [0]\n");
-                fflush(stdout);
-                fflush(stderr);
-                break;
             }
+
+            for (int i = 0; i < bg_count; i++) {
+                int status;
+                waitpid(bg_pids[i], &status, 0);
+                fprintf(stderr, "+ completed '%s' [%d]\n", bg_jobs[i], status);
+            }
+            fprintf(stderr, "Bye...\n");
+            fprintf(stderr, "+ completed 'exit' [0]\n");
+            fflush(stderr);
+            break;
+            // } else {
+            //     fprintf(stderr, "Bye...\n");
+            //     fprintf(stderr, "+ completed 'exit' [0]\n");
+            //     fflush(stderr);
+            //     break;
+            // }
         }
         int pos = 0;
         char *ptr;
@@ -262,11 +273,11 @@ int main(void) {
         if (strcmp(argv[0], "cd") == 0) {
             if (chdir(argv[1]) < 0) {
                 fprintf(stderr, "Error: cannot cd into directory\n");
-                fprintf(stderr, "+ completed '%s' [1]\n", ogcmd);
+                fprintf(stderr, "+ completed '%s' [1]\n", cmd);
                 fflush(stderr);
                 continue;
             } else {
-                fprintf(stderr, "+ completed '%s' [0]\n", ogcmd);
+                fprintf(stderr, "+ completed '%s' [0]\n", cmd);
                 fflush(stderr);
             }
             continue;
@@ -329,12 +340,9 @@ int main(void) {
             close(irdfd);
         }
         if (bg_pos != NULL) {
-            ogcmd[strcspn(ogcmd, "\n")] = '\0';     // tryinh removing newln
-            strcpy(bg_jobs[bg_count], ogcmd);
+            strcpy(bg_jobs[bg_count], ogcmd);   //temp
             bg_pids[bg_count] = pids[cmd_num - 1];
             bg_count++;
-            fprintf(stderr, "+ completed '%s' [0]\n", ogcmd);       // printing for bg
-            fflush(stderr);
         } else {
             int statuss[running];
             for (int i = 0; i < running; i++) {
@@ -343,7 +351,7 @@ int main(void) {
             if (running < cmd_num) {
                 continue;
             }
-            fprintf(stderr, "+ completed '%s' [", ogcmd);
+            fprintf(stderr, "+ completed '%s' [", cmd);
             for (int i = 0; i < cmd_num; i++) {
                 if (i != cmd_num - 1) {
                     fprintf(stderr, "%d][", statuss[i]);

@@ -11,13 +11,13 @@
 #define MAX_CMDS 8
 #define FILE_MAX 32
 
+// insert char
 void strist(char *str, char ch, int pos) {
     int len = strlen(str);
     if (pos < 0 || pos > len) {
         printf("Invalid position\n");
         return;
     }
-
     for (int i = len; i >= pos; i--) {
         str[i + 1] = str[i];
     }
@@ -25,6 +25,7 @@ void strist(char *str, char ch, int pos) {
     str[pos] = ch;
 }
 
+// add space to seperate < > |
 void pre_parse(char *str) {
     char *I_ptr = strchr(str, '<');
     if (I_ptr) {
@@ -65,27 +66,12 @@ int main(void) {
     char cmd[CMDLINE_MAX];
     char *eof;
     char cmd_buf[CMDLINE_MAX];
-    char ogcmd[CMDLINE_MAX];
     char bg_jobs[BG_MAX][CMDLINE_MAX];
     pid_t bg_pids[BG_MAX];
     int bg_count = 0;
     while (1) {
         char *nl;
         char *argv[AR_MAX];
-        for (int i = 0; i < bg_count;) {
-            int status;
-            pid_t bg_pid = bg_pids[i];
-            pid_t res = waitpid(bg_pid, &status, WNOHANG);
-            if (res > 0) {
-                fprintf(stderr, "+ completed '%s' [%d]\n", bg_jobs[i], status);
-                fflush(stderr);
-                bg_pids[i] = bg_pids[bg_count - 1];
-                strcpy(bg_jobs[i], bg_jobs[bg_count - 1]);
-                bg_count--;
-            } else {
-                i++;
-            }
-        }
 
         /* Print prompt */
         printf("sshell@ucd$ ");
@@ -97,7 +83,6 @@ int main(void) {
             /* Make EOF equate to exit */
             strncpy(cmd, "exit\n", CMDLINE_MAX);
 
-        strcpy(ogcmd, cmd);
         /* Print command line if stdin is not provided by terminal */
         if (!isatty(STDIN_FILENO)) {
             printf("%s", cmd);
@@ -109,31 +94,39 @@ int main(void) {
         strcpy(cmd_buf, cmd);
         if (nl)
             *nl = '\0';
-        /* Builtin command */
+
+        // check background jobs
+        for (int i = 0; i < bg_count;) {
+            int status;
+            pid_t bg_pid = bg_pids[i];
+            pid_t res = waitpid(bg_pid, &status, WNOHANG);
+            if (res > 0 || res < 0) {
+                fprintf(stderr, "+ completed '%s' [%d]\n", bg_jobs[i], WEXITSTATUS(status));
+                fflush(stderr);
+                for (int j = i; j < bg_count - 1; j++) {
+                    bg_pids[j] = bg_pids[j + 1];
+                    strcpy(bg_jobs[j], bg_jobs[j + 1]);
+                }
+                bg_count--;
+            } else {
+                i++;
+            }
+        }
+
         if (!strcmp(cmd, "exit")) {
             if (bg_count != 0) {
                 fprintf(stderr, "Error: active job still running\n");
                 fprintf(stderr, "+ completed 'exit' [1]\n");
                 fflush(stderr);
                 continue;
+            } else {
+                fprintf(stderr, "Bye...\n");
+                fprintf(stderr, "+ completed 'exit' [0]\n");
+                fflush(stderr);
+                break;
             }
-
-            for (int i = 0; i < bg_count; i++) {
-                int status;
-                waitpid(bg_pids[i], &status, 0);
-                fprintf(stderr, "+ completed '%s' [%d]\n", bg_jobs[i], status);
-            }
-            fprintf(stderr, "Bye...\n");
-            fprintf(stderr, "+ completed 'exit' [0]\n");
-            fflush(stderr);
-            break;
-            // } else {
-            //     fprintf(stderr, "Bye...\n");
-            //     fprintf(stderr, "+ completed 'exit' [0]\n");
-            //     fflush(stderr);
-            //     break;
-            // }
         }
+        // skip white spaces between arguments
         int pos = 0;
         char *ptr;
         cmd_buf[strlen(cmd_buf) - 1] = ' ';
@@ -149,7 +142,7 @@ int main(void) {
         int redirect = -1;
         int I_redirect = -1;
         int I_end = -1;
-        // int I_flag = 1;
+        int I_flag = 1;
         char *bg_pos = strchr(ptr, '&');
         if (bg_pos) {
             char *temp = cmd_buf + strlen(cmd_buf) - 1;
@@ -178,7 +171,7 @@ int main(void) {
                 argv[pos] = NULL;
             } else if (strcmp(argv[pos], "<") == 0) {
                 if (cmd_num != 1) {
-                    // I_flag = 0;
+                    I_flag = 0;
                 }
                 I_redirect = pos;
                 argv[pos] = NULL;
@@ -195,6 +188,7 @@ int main(void) {
         }
         int len = pos;
         argv[len] = NULL;
+        // check redirection cmd position
         int rdfd;
         if (redirect != -1) {
             if (redirect == len - 1) {
@@ -227,7 +221,7 @@ int main(void) {
                 fflush(stderr);
                 continue;
             }
-            if (I_redirect != -1 && (cmd_num > 1 || I_redirect < 1)) {
+            if (I_redirect != I_end - 2 || I_flag == 0) {
                 fprintf(stderr, "Error: mislocated input redirection\n");
                 fflush(stderr);
                 continue;
@@ -245,11 +239,13 @@ int main(void) {
                 continue;
             }
         }
+        // check length of command
         if (len > 16) {
             fprintf(stderr, "Error: too many process arguments\n");
             fflush(stderr);
             continue;
         }
+        // contiune if no command
         if (argv[0] == NULL) {
             if (cmd_num != 1) {
                 fprintf(stderr, "Error: missing command\n");
@@ -275,14 +271,12 @@ int main(void) {
                 fprintf(stderr, "Error: cannot cd into directory\n");
                 fprintf(stderr, "+ completed '%s' [1]\n", cmd);
                 fflush(stderr);
-                continue;
             } else {
                 fprintf(stderr, "+ completed '%s' [0]\n", cmd);
                 fflush(stderr);
             }
             continue;
         }
-
         // execute
         int pipefds[2 * (MAX_CMDS - 1)];
         for (int i = 0; i < cmd_num - 1; i++) {
@@ -291,6 +285,7 @@ int main(void) {
         char **cmd_begin = argv;
         int running = 0;
         pid_t pids[MAX_CMDS];
+        int exe_flag = 1;
         for (int i = 0; i < cmd_num; i++) {
             if (cmd_begin[0] == NULL && i != cmd_num - 1) {
                 fprintf(stderr, "Error: missing command\n");
@@ -307,6 +302,7 @@ int main(void) {
                     dup2(pipefds[i * 2 + 1], STDOUT_FILENO);
                     // close(pipefds[i * 2 + 1]);
                 }
+
                 if (redirect != -1 && i == cmd_num - 1) {
                     dup2(rdfd, STDOUT_FILENO);
                     close(rdfd);
@@ -320,9 +316,13 @@ int main(void) {
                 }
                 if (execvp(cmd_begin[0], cmd_begin) < 0) {
                     fprintf(stderr,"Error: command not found\n");
+                    exe_flag = 0;
                     exit(1);
                 };
                 exit(0);
+            }
+            if(!exe_flag) {
+                break;
             }
             while (*cmd_begin != NULL) {
                 cmd_begin++;
@@ -340,13 +340,30 @@ int main(void) {
             close(irdfd);
         }
         if (bg_pos != NULL) {
-            strcpy(bg_jobs[bg_count], ogcmd);   //temp
-            bg_pids[bg_count] = pids[running - 1];  // tracking last child
+            strcpy(bg_jobs[bg_count], cmd);
+            bg_pids[bg_count] = pids[cmd_num - 1];
             bg_count++;
         } else {
             int statuss[running];
             for (int i = 0; i < running; i++) {
                 waitpid(pids[i], statuss + i, 0);
+            }
+            for (int i = 0; i < bg_count;) {
+                int status;
+                pid_t bg_pid = bg_pids[i];
+                pid_t res = waitpid(bg_pid, &status, WNOHANG);
+                if (res > 0 || res < 0) {
+                    fprintf(stderr, "+ completed '%s' [%d]\n", bg_jobs[i], WEXITSTATUS(status));
+                    fflush(stderr);
+                    for (int j = i; j < bg_count-1; j++) {
+                        bg_pids[j] = bg_pids[j+1];
+                        strcpy(bg_jobs[j], bg_jobs[j+1]);
+                    }
+                    bg_count--;
+                } else {
+                    i++;
+                }
+                fflush(stderr);
             }
             if (running < cmd_num) {
                 continue;
@@ -354,29 +371,14 @@ int main(void) {
             fprintf(stderr, "+ completed '%s' [", cmd);
             for (int i = 0; i < cmd_num; i++) {
                 if (i != cmd_num - 1) {
-                    fprintf(stderr, "%d][", statuss[i]);
+                    fprintf(stderr, "%d][", WEXITSTATUS(statuss[i]));
                 } else {
-                    fprintf(stderr, "%d]\n", statuss[i]);
+                    fprintf(stderr, "%d]\n", WEXITSTATUS(statuss[i]));
                 }
             }
         }
         fflush(stdout);
         fflush(stderr);
-
-        for (int i = 0; i < bg_count;) {
-            int status;
-            pid_t bg_pid = bg_pids[i];
-            pid_t res = waitpid(bg_pid, &status, WNOHANG);
-            if (res > 0) {
-                fprintf(stderr, "+ completed '%s' [%d]\n", bg_jobs[i], status);
-                fflush(stderr);
-                bg_pids[i] = bg_pids[bg_count - 1];
-                strcpy(bg_jobs[i], bg_jobs[bg_count - 1]);
-                bg_count--;
-            } else {
-                i++;
-            }
-        }
     }
 
     return EXIT_SUCCESS;

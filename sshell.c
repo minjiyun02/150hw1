@@ -260,7 +260,7 @@ int main(void) {
         if (strcmp(argv[0], "cd") == 0) {
             if (chdir(argv[1]) < 0) {
                 fprintf(stderr, "Error: cannot cd into directory\n");
-                fprintf(stderr, "+ completed '%s' [1]\n", cmd);
+                fprintf(stderr, "+ completed '%s' [1]\n", cmd_buf);
                 fflush(stderr);
                 continue;
             } else {

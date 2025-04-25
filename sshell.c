@@ -96,7 +96,13 @@ int main(void) {
         if (!eof)
             /* Make EOF equate to exit */
             strncpy(cmd, "exit\n", CMDLINE_MAX);
-        strcpy(ogcmd, cmd);
+
+        nl = strchr(cmd, '\n');     // removing newline
+        if (nl)
+            *nl = '\0';         // early
+
+        strcpy(ogcmd, cmd);     //clean
+        strcpy(cmd_buf, cmd);
 
         /* Print command line if stdin is not provided by terminal */
         if (!isatty(STDIN_FILENO)) {

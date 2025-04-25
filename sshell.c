@@ -136,7 +136,7 @@ int main(void) {
         int redirect = -1;
         int I_redirect = -1;
         int I_end = -1;
-        int I_flag = 1;
+        // int I_flag = 1;
         char *bg_pos = strchr(ptr, '&');
         if (bg_pos) {
             char *temp = cmd_buf + strlen(cmd_buf) - 1;
@@ -165,7 +165,7 @@ int main(void) {
                 argv[pos] = NULL;
             } else if (strcmp(argv[pos], "<") == 0) {
                 if (cmd_num != 1) {
-                    I_flag = 0;
+                    // I_flag = 0;
                 }
                 I_redirect = pos;
                 argv[pos] = NULL;

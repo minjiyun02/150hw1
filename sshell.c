@@ -341,7 +341,7 @@ int main(void) {
         }
         if (bg_pos != NULL) {
             strcpy(bg_jobs[bg_count], ogcmd);   //temp
-            bg_pids[bg_count] = pids[cmd_num - 1];
+            bg_pids[bg_count] = pids[running - 1];  // tracking last child
             bg_count++;
         } else {
             int statuss[running];
@@ -362,6 +362,21 @@ int main(void) {
         }
         fflush(stdout);
         fflush(stderr);
+
+        for (int i = 0; i < bg_count;) {
+            int status;
+            pid_t bg_pid = bg_pids[i];
+            pid_t res = waitpid(bg_pid, &status, WNOHANG);
+            if (res > 0) {
+                fprintf(stderr, "+ completed '%s' [%d]\n", bg_jobs[i], status);
+                fflush(stderr);
+                bg_pids[i] = bg_pids[bg_count - 1];
+                strcpy(bg_jobs[i], bg_jobs[bg_count - 1]);
+                bg_count--;
+            } else {
+                i++;
+            }
+        }
     }
 
     return EXIT_SUCCESS;

@@ -263,11 +263,11 @@ int main(void) {
         if (strcmp(argv[0], "cd") == 0) {
             if (chdir(argv[1]) < 0) {
                 fprintf(stderr, "Error: cannot cd into directory\n");
-                fprintf(stderr, "+ completed '%s' [1]\n", cmd);
+                fprintf(stderr, "+ completed '%s' [1]\n", ogcmd);
                 fflush(stderr);
                 continue;
             } else {
-                fprintf(stderr, "+ completed '%s' [0]\n", cmd);
+                fprintf(stderr, "+ completed '%s' [0]\n", ogcmd);
                 fflush(stderr);
             }
             continue;
@@ -334,6 +334,8 @@ int main(void) {
             strcpy(bg_jobs[bg_count], ogcmd);
             bg_pids[bg_count] = pids[cmd_num - 1];
             bg_count++;
+            fprintf(stderr, "+ completed '%s' [0]\n", ogcmd);       // printing for bg
+            fflush(stderr);
         } else {
             int statuss[running];
             for (int i = 0; i < running; i++) {
